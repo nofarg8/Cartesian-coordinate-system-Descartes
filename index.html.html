@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מהריבוע התקול אל מערכת הצירים</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --light:#f0d9b5;
+    --dark:#b58863;
+    --cursor:#ffd54f;
+    --frame:#5a4632;
+    --parchment:#fbf6ec;
+    --parchment2:#f4ead6;
+    --ink:#3a2e22;
+    --ink-soft:#6b5a47;
+    --accent:#2f6f4f;
+    --accent-soft:#e3f0e8;
+    --wrong:#c0532e;
+    --wrong-soft:#f7e7df;
+    --line:#d9c7a8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Assistant',system-ui,'Segoe UI',Arial,sans-serif;
+    background:
+      radial-gradient(circle at 20% -10%, #fff8ec 0%, rgba(255,248,236,0) 55%),
+      linear-gradient(160deg,var(--parchment) 0%,var(--parchment2) 100%);
+    color:var(--ink);
+    line-height:1.6;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:720px;margin:0 auto;padding:22px 18px 60px;position:relative}
+  .mute{
+    position:absolute;top:18px;left:14px;z-index:5;
+    width:40px;height:40px;border-radius:50%;border:1.5px solid var(--line);
+    background:#fffdf8;cursor:pointer;font-size:18px;line-height:1;
+    box-shadow:0 3px 8px rgba(90,70,50,.08);transition:transform .08s, background .15s;
+  }
+  .mute:hover{background:#fff5e6}
+  .mute:active{transform:scale(.94)}
+  .mute.off{opacity:.6}
+
+  header.top{text-align:center;margin-bottom:14px}
+  .kicker{
+    display:inline-block;font-size:13px;font-weight:700;letter-spacing:.5px;
+    color:var(--accent);background:var(--accent-soft);
+    padding:4px 12px;border-radius:999px;margin-bottom:10px;
+  }
+  h1{
+    font-size:clamp(22px,5vw,30px);font-weight:800;margin:.1em 0 .15em;
+    color:var(--ink);letter-spacing:-.3px;
+  }
+  .sub{color:var(--ink-soft);font-size:15px;margin:0}
+
+  .steps{
+    display:flex;gap:8px;justify-content:center;align-items:center;
+    margin:16px 0 22px;font-size:13px;font-weight:600;
+  }
+  .pill{padding:5px 12px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--ink-soft)}
+  .pill.on{background:var(--frame);color:#fff;border-color:var(--frame)}
+  .dotsep{width:18px;height:2px;background:var(--line);border-radius:2px}
+
+  .card{
+    background:#fffdf8;border:1px solid var(--line);border-radius:18px;
+    padding:20px 20px 22px;margin:0 0 20px;
+    box-shadow:0 10px 30px rgba(90,70,50,.07);
+  }
+  .story{
+    background:linear-gradient(180deg,#fffaf0,#fff6e8);
+    border:1px solid #ecd9b5;border-radius:14px;padding:16px 18px;
+    font-size:15.5px;color:#4a3c2c;margin-bottom:18px;position:relative;
+  }
+  .story p{margin:.45em 0}
+  .story .mission{
+    margin-top:12px;padding-top:12px;border-top:1px dashed #e0cba3;font-weight:600;color:var(--ink);
+  }
+
+  /* board + axes shared stage */
+  .stage{display:flex;justify-content:center;align-items:center;min-height:470px;position:relative}
+  svg{display:block;max-width:100%;height:auto;touch-action:manipulation}
+  .fade{transition:opacity .55s ease, transform .55s ease}
+  .hide-soft{opacity:0;pointer-events:none;position:absolute}
+
+  /* direction pad */
+  .pad-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:18px}
+  .pad{
+    display:grid;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(3,46px);
+    gap:8px;align-items:center;justify-items:center;direction:ltr;
+  }
+  .pad .up{grid-column:2;grid-row:1}
+  .pad .left{grid-column:1;grid-row:2}
+  .pad .right{grid-column:3;grid-row:2}
+  .pad .down{grid-column:2;grid-row:3}
+  .dir{
+    width:64px;height:46px;border:none;border-radius:12px;cursor:pointer;
+    background:#fff;border:1.5px solid #e2d2b3;color:var(--ink);
+    font-family:inherit;font-size:14px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;gap:4px;
+    box-shadow:0 3px 0 #e9dcc2;transition:transform .08s ease, box-shadow .08s ease, background .15s ease;
+  }
+  .dir:hover{background:#fff8ea}
+  .dir:active{transform:translateY(2px);box-shadow:0 1px 0 #e9dcc2}
+  .dir:disabled{opacity:.45;cursor:default;box-shadow:none}
+  .dir .ar{font-size:17px;line-height:1}
+  .hint{font-size:13px;color:var(--ink-soft);margin-top:2px}
+
+  .banner{
+    display:none;margin-top:16px;text-align:center;font-weight:700;color:var(--accent);
+    background:var(--accent-soft);border:1px solid #bfe0cd;border-radius:12px;padding:12px 14px;
+    animation:pop .4s ease;
+  }
+  .banner.show{display:block}
+  .concept{
+    display:none;margin-top:12px;text-align:center;font-size:15.5px;color:#4a3c2c;
+    background:#fff;border:1px dashed #cdb79a;border-radius:12px;padding:14px 16px;
+    animation:pop .4s ease;
+  }
+  .concept.show{display:block}
+  .concept strong{color:var(--accent)}
+  .ltr{unicode-bidi:isolate;direction:ltr}
+
+  /* questions */
+  .q-title{font-size:18px;font-weight:800;margin:0 0 4px;color:var(--ink)}
+  .q-text{font-size:15.5px;margin:0 0 14px;color:#4a3c2c}
+  .q-text strong{color:var(--ink)}
+  .q-note{display:inline-block;margin-top:8px;font-size:14px;font-weight:600;color:var(--accent)}
+  .opts{display:flex;flex-direction:column;gap:10px}
+  .opt{
+    text-align:right;width:100%;border:1.5px solid #e2d2b3;background:#fff;
+    border-radius:12px;padding:13px 15px;font-family:inherit;font-size:15.5px;font-weight:600;
+    color:var(--ink);cursor:pointer;transition:border-color .15s,background .15s,transform .08s;
+    display:flex;align-items:center;gap:10px;
+  }
+  .opt .tag{
+    flex:none;width:26px;height:26px;border-radius:8px;background:var(--parchment2);
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:var(--ink-soft);
+  }
+  .opt:hover:not(:disabled){background:#fffaf0;border-color:#d8c39c}
+  .opt:active:not(:disabled){transform:scale(.995)}
+  .opt.correct{border-color:var(--accent);background:var(--accent-soft)}
+  .opt.correct .tag{background:var(--accent);color:#fff}
+  .opt.wrong{border-color:var(--wrong);background:var(--wrong-soft)}
+  .opt.wrong .tag{background:var(--wrong);color:#fff}
+  .opt:disabled{cursor:default}
+  .opt.dim{opacity:.55}
+
+  .fb{
+    display:none;margin-top:14px;padding:13px 15px;border-radius:12px;font-size:15px;line-height:1.55;
+    border:1px solid;
+  }
+  .fb.show{display:block;animation:pop .3s ease}
+  .fb.ok{background:var(--accent-soft);border-color:#bfe0cd;color:#23553c}
+  .fb.no{background:var(--wrong-soft);border-color:#eccab8;color:#8a3c1f}
+
+  .next{
+    display:none;margin-top:16px;width:100%;border:none;border-radius:12px;cursor:pointer;
+    background:var(--accent);color:#fff;font-family:inherit;font-size:16px;font-weight:700;padding:14px;
+    box-shadow:0 4px 0 #245a3f;transition:transform .08s, box-shadow .08s;
+  }
+  .next:active{transform:translateY(2px);box-shadow:0 2px 0 #245a3f}
+  .next.show{display:block;animation:pop .35s ease}
+
+  /* bridge */
+  .bridge{display:none}
+  .bridge.show{display:block;animation:pop .4s ease}
+  .bridge-line{
+    background:#fff;border:1px dashed #cdb79a;border-radius:14px;padding:16px 18px;
+    font-size:16px;color:#4a3c2c;text-align:center;
+  }
+  .bridge-line strong{color:var(--accent)}
+
+  /* discovery */
+  .reveal{display:none}
+  .reveal.show{display:block}
+
+  .discovery{
+    background:linear-gradient(165deg,#fffaf0 0%,#fff3df 100%);
+    border:2px solid #e6cfa3;border-radius:20px;padding:24px 22px;
+    box-shadow:0 14px 36px rgba(120,90,55,.16);position:relative;overflow:hidden;
+  }
+  .discovery::before{
+    content:"";position:absolute;inset:-40% -10% auto auto;width:220px;height:220px;
+    background:radial-gradient(circle,#ffe9b8 0%,rgba(255,233,184,0) 70%);
+  }
+  .disc-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;position:relative}
+  .disc-badge{font-size:30px}
+  .disc-title{font-size:22px;font-weight:800;color:var(--ink);margin:0}
+  .disc-list{counter-reset:d;list-style:none;margin:0;padding:0;position:relative}
+  .disc-list li{
+    display:flex;gap:12px;align-items:flex-start;margin:0 0 14px;font-size:16px;color:#3f3324;
+  }
+  .disc-list li::before{
+    counter-increment:d;content:counter(d);flex:none;
+    width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;
+    font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;margin-top:1px;
+  }
+  .disc-list strong{color:var(--accent)}
+  .disc-text{flex:1;min-width:0}
+  .disc-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  .disc-return{text-align:center;margin:14px 0 0;font-size:15.5px;font-weight:700;color:var(--frame);position:relative}
+  .btn{
+    flex:1 1 auto;border:none;border-radius:12px;cursor:pointer;font-family:inherit;
+    font-size:15px;font-weight:700;padding:13px 16px;transition:transform .08s, box-shadow .08s;
+  }
+  .btn.primary{background:var(--frame);color:#fff;box-shadow:0 4px 0 #3f3122}
+  .btn.primary:active{transform:translateY(2px);box-shadow:0 2px 0 #3f3122}
+  .btn.ghost{background:#fff;color:var(--ink);border:1.5px solid #e2d2b3;box-shadow:0 3px 0 #ece0c8}
+  .btn.ghost:active{transform:translateY(2px);box-shadow:0 1px 0 #ece0c8}
+
+  @keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+  .shake{animation:shake .25s}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.001ms !important;transition-duration:.001ms !important}
+  }
+  @media (max-width:480px){
+    .pad{grid-template-columns:repeat(3,56px)}
+    .dir{width:56px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <button id="muteBtn" class="mute" aria-label="הפעלה או השתקה של הקול" title="קול">🔊</button>
+
+
+  <header class="top">
+    <span class="kicker">לומדת דקארט · פתיחה</span>
+    <h1>מהריבוע התקול אל מערכת הצירים</h1>
+    <p class="sub">התנסות קצרה לפני שמתחילים. כוונו, גלו, וענו על שתי שאלות.</p>
+  </header>
+
+  <div class="steps">
+    <span class="pill on" id="pill-a">שלב א · הלוח</span>
+    <span class="dotsep"></span>
+    <span class="pill" id="pill-b">שלב ב · הצירים</span>
+  </div>
+
+  <!-- ===================== שלב א ===================== -->
+  <section class="card" id="stageA">
+    <div class="story">
+      <p>עדן ואדם רצו לשחק שחמט בבית, אך לא היה להם לוח. הם ביקשו ממחולל תמונות של בינה מלאכותית ליצור "לוח שחמט קלאסי, משבצות כהות ובהירות". אבל המחולל עשה טעות: באחד הריבועים באמצע הלוח, במקום להשאיר אותו בהיר, הוא צבע אותו כהה.</p>
+      <p>כשעדן ניסתה לבקש מהמחשב "תקן את הריבוע שבאמצע", המחשב לא ידע לאיזה ריבוע היא מתכוונת. עדן הציעה: "בואו נספור מהפינה השמאלית-התחתונה. נגיד למחשב כמה משבצות לזוז ימינה וכמה לזוז למעלה, וכך הוא יגיע בדיוק לריבוע התקול."</p>
+      <p class="mission">המשימה שלכם: כוונו את המחשב בעזרת כפתורי הכיוון, משבצת אחר משבצת, עד שיגיע לריבוע התקול ויתקן אותו.</p>
+    </div>
+
+    <div class="stage">
+      <svg id="board" viewBox="0 0 452 452" role="img" aria-label="לוח שחמט עם ריבוע תקול">
+        <rect x="0" y="0" width="452" height="452" rx="10" fill="var(--frame)"/>
+        <g id="cells"></g>
+        <g id="trail"></g>
+        <g id="morphDots" opacity="0"></g>
+        <g id="cursorG" style="transition:transform .28s ease">
+          <rect x="0" y="0" width="54" height="54" rx="4" fill="none" stroke="var(--cursor)" stroke-width="4"/>
+          <rect x="3" y="3" width="48" height="48" rx="3" fill="var(--cursor)" opacity="0.22"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="pad-wrap">
+      <div class="pad" id="pad" role="group" aria-label="כפתורי כיוון">
+        <button class="dir up"    data-dir="up"    aria-label="למעלה"><span class="ar">▲</span> למעלה</button>
+        <button class="dir left"  data-dir="left"  aria-label="שמאלה"><span class="ar">◀</span> שמאלה</button>
+        <button class="dir right" data-dir="right" aria-label="ימינה">ימינה <span class="ar">▶</span></button>
+        <button class="dir down"  data-dir="down"  aria-label="למטה">למטה <span class="ar">▼</span></button>
+      </div>
+      <p class="hint">כל לחיצה מזיזה את הסמן משבצת אחת. אפשר גם בעזרת מקשי החצים.</p>
+    </div>
+
+    <div class="banner" id="bannerA">מצוין! כיוונתם את המחשב בדיוק לריבוע התקול, והוא תוקן.</div>
+    <div class="concept" id="conceptA">בלי לדעת, עדן ואדם גילו עיקרון חשוב: כדי לתאר מיקום במדויק צריך <strong>שני מספרים</strong>, אחד לכל כיוון. לזוג המספרים הזה קוראים <strong>קואורדינטות</strong>.</div>
+  </section>
+
+  <!-- ===================== שאלה 1 ===================== -->
+  <section class="card reveal" id="q1card">
+    <h2 class="q-title">שאלה 1</h2>
+    <p class="q-text">כדי להגיע לריבוע התקול, השתמשתם בכפתורי כיוון. <strong>בכמה כיוונים שונים</strong> הייתם צריכים להשתמש כדי להגיע אליו?<br><span class="q-note">שימו לב, עליכם לחשוב על מספר הכיוונים המינימלי הדרוש.</span></p>
+    <div class="opts" id="opts1"></div>
+    <div class="fb" id="fb1"></div>
+  </section>
+
+  <!-- ===================== גשר ===================== -->
+  <section class="card bridge" id="bridge">
+    <div class="bridge-line">עכשיו אנחנו לא רוצים לכוון אל <strong>משבצת</strong> שלמה, אלא אל <strong>נקודה</strong> מדויקת. בשביל זה נשתמש במערכת צירים.</div>
+    <button class="next show" id="toStageB">המשיכו למערכת הצירים</button>
+  </section>
+
+  <!-- ===================== שלב ב ===================== -->
+  <section class="card reveal" id="stageB">
+    <div class="story" style="margin-bottom:18px">
+      <p>עד עכשיו תיארנו מיקום על לוח של משבצות. במערכת צירים אנחנו מתארים נקודות מדויקות, ולכן משתמשים ב<strong>שנתות</strong> מסומנות במספרים על שני הצירים. נקודת ההתחלה של הצירים מסומנת <span class="ltr">(0,0)</span>, וממנה מתחילים לספור: ערך על הציר האופקי <span class="ltr">x</span> וערך על הציר האנכי <span class="ltr">y</span>.</p>
+    </div>
+    <div class="stage">
+      <svg id="axes" viewBox="0 0 452 452" role="img" aria-label="מערכת צירים עם זבוב על נקודה"></svg>
+    </div>
+  </section>
+
+  <!-- ===================== שאלה 2 ===================== -->
+  <section class="card reveal" id="q2card">
+    <h2 class="q-title">שאלה 2</h2>
+    <p class="q-text">באיזו נקודה נמצא הזבוב?</p>
+    <div class="opts" id="opts2"></div>
+    <div class="fb" id="fb2"></div>
+  </section>
+
+  <!-- ===================== כרטיס גילוי ===================== -->
+  <section class="reveal" id="discWrap">
+    <div class="discovery" id="discovery">
+      <div class="disc-head">
+        <span class="disc-badge">🎉</span>
+        <h2 class="disc-title">גיליתם:</h2>
+      </div>
+      <ul class="disc-list">
+        <li><span class="disc-text">זוג המספרים שמתאר מיקום מדויק של נקודה נקרא ה<strong>קואורדינטות</strong> שלה.</span></li>
+        <li><span class="disc-text">המספר הראשון בנקודה הוא תמיד הערך על ציר <span class="ltr">x</span>, והמספר השני הוא תמיד הערך על ציר <span class="ltr">y</span>. לכן הסדר קובע: <span class="ltr">(3,4)</span> אינו <span class="ltr">(4,3)</span>.</span></li>
+        <li><span class="disc-text">שימו לב: בשונה מלוח המשבצות בשחמט, שבו כל משבצת היא תא שתופס שטח, במערכת צירים הסימון <span class="ltr">(x,y)</span> מתאר <strong>נקודה</strong> מדויקת אחת על מפגש השנתות.</span></li>
+      </ul>
+      <div class="disc-actions">
+        <button class="btn primary" id="dlBtn">הורדת כרטיס הסיכום</button>
+      </div>
+      <p class="disc-return">כעת חזרו אל הלומדה</p>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  function L(s){ return '<span dir="ltr" style="unicode-bidi:isolate">'+s+'</span>'; }
+
+  // ===== sound feedback (Web Audio) =====
+  var AudioCtx = window.AudioContext || window.webkitAudioContext;
+  var actx = null, soundOn = true;
+  function ensureAudio(){
+    if(!soundOn) return null;
+    if(!actx && AudioCtx){ try{ actx = new AudioCtx(); }catch(e){ actx=null; } }
+    if(actx && actx.state==='suspended'){ actx.resume(); }
+    return actx;
+  }
+  function blip(freq,dur,type,vol){
+    var a=ensureAudio(); if(!a) return;
+    var o=a.createOscillator(), g=a.createGain();
+    o.type=type||'sine'; o.frequency.value=freq;
+    o.connect(g); g.connect(a.destination);
+    var t=a.currentTime, peak=vol||0.4;
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(peak, t+0.012);
+    g.gain.setValueAtTime(peak, t+dur*0.55);
+    g.gain.exponentialRampToValueAtTime(0.0006, t+dur);
+    o.start(t); o.stop(t+dur+0.04);
+  }
+  function playMove(dir){
+    var f={right:560,left:500,up:660,down:440}[dir]||540;
+    blip(f,0.13,'triangle',0.34);
+  }
+  function playBlocked(){ blip(180,0.18,'square',0.34); }
+  function playCorrect(){
+    if(!ensureAudio()) return;
+    [523,659,784].forEach(function(fr,i){ setTimeout(function(){ blip(fr,0.22,'triangle',0.44); }, i*120); });
+  }
+  function playWrong(){
+    if(!ensureAudio()) return;
+    blip(415,0.20,'square',0.22);
+    setTimeout(function(){ blip(311,0.24,'square',0.22); },150);
+  }
+  var SIZE=8, CELL=54, PAD=10; // board geometry inside 452 viewBox
+
+  // ---- coordinate helpers (col 1..8, row 1..8 ; row 1 = bottom) ----
+  function px(col,row){
+    return { x: PAD + (col-1)*CELL, y: PAD + (SIZE-row)*CELL };
+  }
+  var broken={col:5,row:4};
+  var cursor={col:1,row:1};
+  var visited={};
+  var fixed=false;
+
+  var cellsG=document.getElementById('cells');
+  var trailG=document.getElementById('trail');
+  var morphG=document.getElementById('morphDots');
+  var cursorG=document.getElementById('cursorG');
+  var boardSvg=document.getElementById('board');
+
+  // ---- build chess board ----
+  function isLight(col,row){ return (col+row)%2===1; } // broken (5,4)=9 -> should be light
+  (function buildBoard(){
+    for(var row=1;row<=SIZE;row++){
+      for(var col=1;col<=SIZE;col++){
+        var p=px(col,row);
+        var r=document.createElementNS('http://www.w3.org/2000/svg','rect');
+        r.setAttribute('x',p.x); r.setAttribute('y',p.y);
+        r.setAttribute('width',CELL); r.setAttribute('height',CELL);
+        var light=isLight(col,row);
+        var isBroken=(col===broken.col&&row===broken.row);
+        // broken square should be light but is painted dark
+        r.setAttribute('fill', (light && !isBroken) ? 'var(--light)' : 'var(--dark)');
+        if(isBroken){ r.setAttribute('id','brokenCell'); }
+        cellsG.appendChild(r);
+      }
+    }
+    // subtle dashed mark on the broken square
+    var bp=px(broken.col,broken.row);
+    var mark=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    mark.setAttribute('id','brokenMark');
+    mark.setAttribute('x',bp.x+4); mark.setAttribute('y',bp.y+4);
+    mark.setAttribute('width',CELL-8); mark.setAttribute('height',CELL-8);
+    mark.setAttribute('rx','4');
+    mark.setAttribute('fill','none');
+    mark.setAttribute('stroke','#c0392b');
+    mark.setAttribute('stroke-width','2');
+    mark.setAttribute('stroke-dasharray','5 4');
+    mark.setAttribute('opacity','0.9');
+    cellsG.appendChild(mark);
+    placeCursor(false);
+  })();
+
+  function placeCursor(animate){
+    var p=px(cursor.col,cursor.row);
+    if(!animate) cursorG.style.transition='none';
+    cursorG.style.transform='translate('+p.x+'px,'+p.y+'px)';
+    if(!animate){ void cursorG.getBBox(); cursorG.style.transition='transform .28s ease'; }
+  }
+
+  function markVisited(col,row){
+    var key=col+','+row;
+    if(visited[key]) return;
+    visited[key]=true;
+    var p=px(col,row);
+    var r=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    r.setAttribute('x',p.x); r.setAttribute('y',p.y);
+    r.setAttribute('width',CELL); r.setAttribute('height',CELL);
+    r.setAttribute('fill','#fff2c2'); r.setAttribute('opacity','0.38');
+    trailG.appendChild(r);
+    var d=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    d.setAttribute('cx',p.x+CELL/2); d.setAttribute('cy',p.y+CELL/2);
+    d.setAttribute('r','3'); d.setAttribute('fill','#caa64f'); d.setAttribute('opacity','0.7');
+    trailG.appendChild(d);
+  }
+
+  var moving=false;
+  function move(dir){
+    if(fixed||moving) return;
+    var nc=cursor.col, nr=cursor.row;
+    if(dir==='right') nc++;
+    else if(dir==='left') nc--;
+    else if(dir==='up') nr++;
+    else if(dir==='down') nr--;
+    if(nc<1||nc>SIZE||nr<1||nr>SIZE){ // out of bounds -> gentle shake
+      boardSvg.classList.remove('shake'); void boardSvg.offsetWidth; boardSvg.classList.add('shake');
+      playBlocked();
+      return;
+    }
+    markVisited(cursor.col,cursor.row);
+    cursor.col=nc; cursor.row=nr;
+    moving=true;
+    playMove(dir);
+    placeCursor(true);
+    setTimeout(function(){
+      moving=false;
+      if(cursor.col===broken.col&&cursor.row===broken.row) fixBroken();
+    },290);
+  }
+
+  function fixBroken(){
+    fixed=true;
+    markVisited(cursor.col,cursor.row);
+    var cell=document.getElementById('brokenCell');
+    var mark=document.getElementById('brokenMark');
+    if(mark){ mark.style.transition='opacity .4s ease'; mark.style.opacity='0'; }
+    if(cell){
+      cell.style.transition='fill .5s ease';
+      cell.setAttribute('fill','var(--light)'); // becomes its correct light color
+    }
+    // disable pad
+    Array.prototype.forEach.call(document.querySelectorAll('.dir'),function(b){b.disabled=true;});
+    var banner=document.getElementById('bannerA');
+    banner.classList.add('show');
+    playCorrect();
+    setTimeout(function(){ document.getElementById('conceptA').classList.add('show'); },550);
+    setTimeout(function(){ revealCard('q1card'); },1350);
+  }
+
+  // pad + keyboard
+  document.getElementById('pad').addEventListener('click',function(e){
+    var b=e.target.closest('.dir'); if(!b) return; move(b.getAttribute('data-dir'));
+  });
+  window.addEventListener('keydown',function(e){
+    var map={ArrowRight:'right',ArrowLeft:'left',ArrowUp:'up',ArrowDown:'down'};
+    if(map[e.key] && !fixed){ e.preventDefault(); move(map[e.key]); }
+  });
+
+  // mute toggle
+  document.getElementById('muteBtn').addEventListener('click',function(){
+    soundOn=!soundOn;
+    this.textContent = soundOn ? '🔊' : '🔇';
+    this.classList.toggle('off', !soundOn);
+    if(soundOn){ ensureAudio(); playMove('up'); }
+  });
+
+  // ---- reveal helper ----
+  function revealCard(id){
+    var el=document.getElementById(id);
+    el.classList.add('show');
+    setTimeout(function(){ el.scrollIntoView({behavior:'smooth',block:'center'}); },60);
+  }
+
+  // ============= QUESTIONS =============
+  function shuffle(a){ for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;} return a; }
+  var LETTERS=['א','ב','ג','ד'];
+
+  function buildQuestion(opts){
+    // opts: {container, options:[{text,correct,fb}], fbEl, onCorrect}
+    var data=shuffle(opts.options.slice());
+    var solved=false;
+    var cont=opts.container; cont.innerHTML='';
+    var fbEl=opts.fbEl;
+    data.forEach(function(o,i){
+      var btn=document.createElement('button');
+      btn.className='opt';
+      btn.innerHTML='<span class="tag">'+LETTERS[i]+'</span><span>'+o.text+'</span>';
+      btn.addEventListener('click',function(){
+        if(solved) return;
+        if(o.correct){
+          solved=true;
+          playCorrect();
+          btn.classList.remove('wrong'); btn.classList.add('correct');
+          Array.prototype.forEach.call(cont.children,function(c){ if(c!==btn){c.classList.add('dim'); c.disabled=true;} });
+          btn.disabled=true;
+          fbEl.className='fb ok show'; fbEl.innerHTML=o.fb;
+          opts.onCorrect();
+        }else{
+          playWrong();
+          btn.classList.add('wrong'); btn.disabled=true;
+          fbEl.className='fb no show'; fbEl.innerHTML=o.fb;
+        }
+      });
+      cont.appendChild(btn);
+    });
+  }
+
+  // Question 1
+  buildQuestion({
+    container:document.getElementById('opts1'),
+    fbEl:document.getElementById('fb1'),
+    options:[
+      {text:'כיוון אחד', correct:false, fb:'בכיוון אחד הסמן נע רק על קו ישר אחד. האם זה מספיק כדי להגיע לריבוע שנמצא גם הצידה וגם כלפי מעלה? חשבו ונסו שוב.'},
+      {text:'שני כיוונים', correct:true,  fb:'בדיוק. הריבוע התקול נמצא גם הצידה וגם כלפי מעלה מהפינה, ולכן צריך שני כיוונים: אופקי ואנכי. שני הכיוונים האלה הם הבסיס לשני המספרים שמתארים מיקום.'},
+      {text:'שלושה כיוונים', correct:false, fb:'ייתכן שספרתם גם תיקון או חזרה לאחור באמצע הדרך. חשבו מהו המספר המינימלי של כיוונים שבלעדיהם אי אפשר להגיע לריבוע, ונסו שוב.'},
+      {text:'ארבעה כיוונים', correct:false, fb:'אולי ספרתם את כל הלחיצות שביצעתם בפועל, כולל תיקונים. השאלה היא על המינימום ההכרחי. חשבו מהם הכיוונים שבלעדיהם אי אפשר להגיע, ונסו שוב.'}
+    ],
+    onCorrect:function(){
+      document.getElementById('bridge').classList.add('show');
+      setTimeout(function(){ document.getElementById('bridge').scrollIntoView({behavior:'smooth',block:'center'}); },120);
+    }
+  });
+
+  // ============= BRIDGE -> STAGE B =============
+  document.getElementById('toStageB').addEventListener('click',function(){
+    this.disabled=true;
+    // morph: fade cells out, dots in, then crossfade to axes
+    buildMorphDots();
+    cellsG.style.transition='opacity .55s ease'; cellsG.style.opacity='0.12';
+    trailG.style.transition='opacity .55s ease'; trailG.style.opacity='0';
+    cursorG.style.transition='opacity .4s ease, transform .28s ease'; cursorG.style.opacity='0';
+    morphG.style.transition='opacity .55s ease'; morphG.style.opacity='1';
+    document.getElementById('pill-a').classList.remove('on');
+    document.getElementById('pill-b').classList.add('on');
+    setTimeout(function(){
+      buildAxes();
+      var stageB=document.getElementById('stageB');
+      stageB.classList.add('show');
+      // hide board card softly
+      document.getElementById('stageA').style.transition='opacity .5s ease';
+      document.getElementById('stageA').style.opacity='0.5';
+      setTimeout(function(){ revealCard('q2card'); document.getElementById('stageB').scrollIntoView({behavior:'smooth',block:'start'}); },200);
+    },620);
+  });
+
+  function buildMorphDots(){
+    morphG.innerHTML='';
+    for(var row=1;row<=SIZE;row++){
+      for(var col=1;col<=SIZE;col++){
+        var p=px(col,row);
+        var c=document.createElementNS('http://www.w3.org/2000/svg','circle');
+        c.setAttribute('cx',p.x); c.setAttribute('cy',p.y);
+        c.setAttribute('r','3'); c.setAttribute('fill','var(--frame)');
+        morphG.appendChild(c);
+      }
+    }
+  }
+
+  // ============= AXES (STAGE B) =============
+  function buildAxes(){
+    var svg=document.getElementById('axes');
+    var W=452, H=452;
+    var ox=46, oy=H-46;        // origin in svg coords
+    var unit=44;               // px per tick
+    var maxN=8;
+    function AX(n){ return ox + n*unit; }
+    function AY(n){ return oy - n*unit; }
+    var ns='http://www.w3.org/2000/svg';
+    function el(t,a){ var e=document.createElementNS(ns,t); for(var k in a) e.setAttribute(k,a[k]); return e; }
+    svg.innerHTML='';
+
+    // background
+    svg.appendChild(el('rect',{x:0,y:0,width:W,height:H,rx:10,fill:'#fffdf7'}));
+
+    // grid lines + intersection dots
+    var grid=el('g',{});
+    for(var n=0;n<=maxN;n++){
+      grid.appendChild(el('line',{x1:AX(n),y1:AY(0),x2:AX(n),y2:AY(maxN),stroke:'#eadfca','stroke-width':1}));
+      grid.appendChild(el('line',{x1:AX(0),y1:AY(n),x2:AX(maxN),y2:AY(n),stroke:'#eadfca','stroke-width':1}));
+    }
+    svg.appendChild(grid);
+
+    var dots=el('g',{opacity:0});
+    for(var i=0;i<=maxN;i++){ for(var j=0;j<=maxN;j++){
+      dots.appendChild(el('circle',{cx:AX(i),cy:AY(j),r:2.2,fill:'#d8c39c'}));
+    }}
+    svg.appendChild(dots);
+
+    // axes lines (drawn in)
+    var axX=el('line',{x1:AX(0),y1:AY(0),x2:AX(maxN)+14,y2:AY(0),stroke:'var(--frame)','stroke-width':3,'stroke-linecap':'round'});
+    var axY=el('line',{x1:AX(0),y1:AY(0),x2:AX(0),y2:AY(maxN)-14,stroke:'var(--frame)','stroke-width':3,'stroke-linecap':'round'});
+    [axX,axY].forEach(function(l){
+      l.setAttribute('stroke-dasharray',380); l.setAttribute('stroke-dashoffset',380);
+      l.style.transition='stroke-dashoffset .7s ease';
+    });
+    svg.appendChild(axX); svg.appendChild(axY);
+
+    // arrow heads
+    svg.appendChild(el('polygon',{points:(AX(maxN)+14)+','+AY(0)+' '+(AX(maxN)+6)+','+(AY(0)-5)+' '+(AX(maxN)+6)+','+(AY(0)+5),fill:'var(--frame)'}));
+    svg.appendChild(el('polygon',{points:AX(0)+','+(AY(maxN)-14)+' '+(AX(0)-5)+','+(AY(maxN)-6)+' '+(AX(0)+5)+','+(AY(maxN)-6),fill:'var(--frame)'}));
+
+    // tick numbers
+    function txt(x,y,s,anchor,size,weight,fill){
+      var t=el('text',{x:x,y:y,'text-anchor':anchor||'middle','font-family':"Assistant, sans-serif",'font-size':size||13,'font-weight':weight||600,fill:fill||'#6b5a47'});
+      t.textContent=s; return t;
+    }
+    for(var k=1;k<=maxN;k++){
+      svg.appendChild(el('line',{x1:AX(k),y1:AY(0)-4,x2:AX(k),y2:AY(0)+4,stroke:'var(--frame)','stroke-width':2}));
+      svg.appendChild(txt(AX(k),AY(0)+18,String(k)));
+      svg.appendChild(el('line',{x1:AX(0)-4,y1:AY(k),x2:AX(0)+4,y2:AY(k),stroke:'var(--frame)','stroke-width':2}));
+      svg.appendChild(txt(AX(0)-12,AY(k)+4,String(k),'middle'));
+    }
+    // origin 0
+    svg.appendChild(txt(AX(0)-12,AY(0)+18,'0','middle'));
+    // axis labels
+    svg.appendChild(txt(AX(maxN)+18,AY(0)+22,'x','start',16,800,'var(--frame)'));
+    svg.appendChild(txt(AX(0)-22,AY(maxN)-12,'y','middle',16,800,'var(--frame)'));
+
+    // the fly point (no helper lines - students read the position themselves)
+    var fx=3, fy=4;
+    var flyG=el('g',{opacity:0});
+    flyG.appendChild(el('circle',{cx:AX(fx),cy:AY(fy),r:5.5,fill:'#3a2e22'}));           // the precise point
+    flyG.appendChild(el('circle',{cx:AX(fx),cy:AY(fy),r:11,fill:'none',stroke:'#3a2e22','stroke-width':1.5,opacity:0.35}));
+    var fly=txt(AX(fx),AY(fy)-12,'🪰','middle',22,400,'#000'); flyG.appendChild(fly);
+    svg.appendChild(flyG);
+
+    // animate in
+    requestAnimationFrame(function(){
+      axX.setAttribute('stroke-dashoffset',0);
+      axY.setAttribute('stroke-dashoffset',0);
+      dots.style.transition='opacity .6s ease .25s'; dots.style.opacity='1';
+      setTimeout(function(){
+        flyG.style.transition='opacity .5s ease'; flyG.style.opacity='1';
+      },650);
+    });
+  }
+
+  // Question 2
+  buildQuestion({
+    container:document.getElementById('opts2'),
+    fbEl:document.getElementById('fb2'),
+    options:[
+      {text:L('(3,4)'), correct:true,  fb:'בדיוק. הזבוב נמצא על השנתה 3 בציר האופקי ועל השנתה 4 בציר האנכי. כותבים תחילה את ערך הציר האופקי ('+L('x')+') ולאחריו את ערך הציר האנכי ('+L('y')+'), ולכן הקואורדינטות של הנקודה הן '+L('(3,4)')+'.'},
+      {text:L('(4,3)'), correct:false, fb:'המספר הראשון שכותבים הוא תמיד הערך על הציר האופקי ('+L('x')+'), והמספר השני הוא הערך על הציר האנכי ('+L('y')+'). בדקו לפי זה את הסדר, ונסו שוב.'},
+      {text:L('(2,3)'), correct:false, fb:'בדקו מאיזו שנתה התחלתם לספור על כל ציר. מהיכן מתחילה הספירה? ספרו שוב את השנתות ונסו שוב.'},
+      {text:L('7'), correct:false, fb:'מספר אחד אומר רק כמה, אבל לא לאיזה כיוון. חשבו כמה ערכים צריך כדי לתאר נקודה אחת במישור, ונסו שוב.'}
+    ],
+    onCorrect:function(){
+      var w=document.getElementById('discWrap'); w.classList.add('show');
+      setTimeout(function(){ w.scrollIntoView({behavior:'smooth',block:'center'}); },120);
+    }
+  });
+
+  // ============= DISCOVERY CARD: download as image =============
+  document.getElementById('dlBtn').addEventListener('click',function(){
+    drawCardImage();
+  });
+
+  function drawCardImage(){
+    var dpr=Math.max(2, window.devicePixelRatio||1);
+    var W=920, H=640;
+    var cv=document.createElement('canvas');
+    cv.width=W*dpr; cv.height=H*dpr;
+    var ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
+    ctx.direction='rtl'; ctx.textAlign='right';
+
+    // background
+    var g=ctx.createLinearGradient(0,0,W,H);
+    g.addColorStop(0,'#fffaf0'); g.addColorStop(1,'#fff3df');
+    roundRect(ctx,8,8,W-16,H-16,24); ctx.fillStyle=g; ctx.fill();
+    ctx.lineWidth=3; ctx.strokeStyle='#e6cfa3'; ctx.stroke();
+
+    var right=W-56;
+    // title
+    ctx.fillStyle='#3a2e22';
+    ctx.font='800 38px Assistant, sans-serif';
+    ctx.fillText('🎉  גיליתם:', right, 84);
+
+    var lines=[
+      ['זוג המספרים שמתאר מיקום מדויק של נקודה','נקרא הקואורדינטות שלה.'],
+      ['המספר הראשון בנקודה הוא תמיד הערך על ציר x,','והמספר השני הוא תמיד הערך על ציר y.','לכן הסדר קובע: (3,4) אינו (4,3).'],
+      ['שימו לב: בשונה מלוח המשבצות בשחמט, שבו כל','משבצת היא תא שתופס שטח, במערכת צירים','הסימון (x,y) מתאר נקודה מדויקת אחת','על מפגש השנתות.']
+    ];
+    var y=150;
+    ctx.font='600 24px Assistant, sans-serif';
+    lines.forEach(function(block,idx){
+      // number bullet
+      var by=y-6;
+      ctx.beginPath(); ctx.fillStyle='#2f6f4f';
+      ctx.arc(right-6, by-8, 18, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle='#fff'; ctx.font='800 20px Assistant, sans-serif';
+      ctx.textAlign='center';
+      ctx.fillText(String(idx+1), right-6, by-1);
+      ctx.textAlign='right';
+      ctx.fillStyle='#3f3324'; ctx.font='600 24px Assistant, sans-serif';
+      var lineRight=right-42;
+      block.forEach(function(ln){
+        ln = ln.replace('(3,4)','\u2066(3,4)\u2069').replace('(4,3)','\u2066(4,3)\u2069')
+               .replace('(x,y)','\u2066(x,y)\u2069')
+               .replace('ציר x','ציר \u2066x\u2069').replace('ציר y','ציר \u2066y\u2069');
+        ctx.fillText(ln, lineRight, y);
+        y+=34;
+      });
+      y+=18;
+    });
+
+    // footer
+    ctx.fillStyle='#8a7657'; ctx.font='600 17px Assistant, sans-serif';
+    ctx.fillText('לומדת דקארט · מהריבוע התקול אל מערכת הצירים', right, H-36);
+
+    var url=cv.toDataURL('image/png');
+    var a=document.createElement('a');
+    a.href=url; a.download='כרטיס_גילוי_דקארט.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+  function roundRect(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+})();
+</script>
+</body>
+</html>
